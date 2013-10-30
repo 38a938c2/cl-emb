@@ -163,7 +163,7 @@ indicates an expression.")
     ))
 
 ;; TODO: Refactor! Looks a bit clumsy.
-(defun set-specials (match registers)
+(defun set-specials (match &rest registers)
   "Parse parameter(s) of @set and set special variables
 like e. g. *ESCAPE-TYPE*."
   ;;  <% @set escape=xml schnuffel=poe %>
@@ -341,13 +341,6 @@ STRING can be NIL."
   "Get given file FILENAME."
   (contents-of-file filename))
 
-(defmethod make-replace ((replacement string))
-  "Make replacement string for PPCRE:REGEX-REPLACE-ALL"
-  (concatenate 'string
-               *emb-start-marker*
-               replacement
-               *emb-end-marker*))
-
 (let ((scanner-hash (make-hash-table :test #'equal)))
   (defun scanner-for-expand-template-tag (tag)
     "Returns a CL-PPCRE scanner which matches a template tag expanded by EXPAND-TEMPLATE-TAGS.
@@ -359,35 +352,32 @@ Scanners are memoized in SCANNER-HASH once they are created."
     "Removes all scanners for template tags from cache."
     (clrhash scanner-hash)))
 
-(defmethod make-replace ((replacement function))
-  "Make replacement function for PPCRE:REGEX-REPLACE-ALL"
-  (lambda (match &rest registers)
-    (concatenate 'string
-                 *emb-start-marker*
-                 (funcall replacement match registers)
-                 *emb-end-marker*)))
-  
 (defun expand-template-tags (string)
   "Expand template-tags (@if, @else, ...) to Common Lisp.
 Replacement and regex in *TEMPLATE-TAG-EXPAND*"
   (labels ((expand-tags (string &optional (expands *template-tag-expand*))
-             (let ((regex (scanner-for-expand-template-tag (concatenate 'string
-                                       "(?is)"
-                                       (ppcre:quote-meta-chars *emb-start-marker*)
-                                       (first (first expands))
-                                                                        (ppcre:quote-meta-chars *emb-end-marker*))))
-                   (replacement (make-replace (rest (first expands)))))
+             (let ((regex (scanner-for-expand-template-tag
+                           (concatenate 'string "(?is)"
+                                        "^" (first (first expands)) "$")))
+                   (replacement (rest (first expands))))
                (if (null (rest expands))
                    (ppcre:regex-replace-all regex string replacement :simple-calls t)
                    (expand-tags
                     (ppcre:regex-replace-all regex string replacement :simple-calls t)
                     (rest expands))))))
-    (expand-tags
-     ;; First remove code within comments
-     (ppcre:regex-replace-all
-      (scanner-for-expand-template-tag (concatenate 'string "(?is)" (ppcre:quote-meta-chars *emb-start-marker*)
-                                                    "#.*?#" (ppcre:quote-meta-chars *emb-end-marker*)))
-      string ""))))
+    (ppcre:regex-replace-all (format nil "(?is)(~A\\-?)(.+?)(\\-?~A)"
+                                     (ppcre:quote-meta-chars *emb-start-marker*)
+                                     (ppcre:quote-meta-chars *emb-end-marker*))
+                             string
+                             (lambda (match start-tag string end-tag)
+                               (declare (ignore match))
+                               (if (ppcre:scan "^#.+#$" string)
+                                   ""
+                                   (concatenate 'string
+                                                start-tag
+                                                (expand-tags string)
+                                                end-tag)))
+                             :simple-calls t)))
 
 (defvar *emb-stream-redirection* "with-output-to-string (*standard-output*)")
 
@@ -428,20 +418,28 @@ Replacement and regex in *TEMPLATE-TAG-EXPAND*"
 (defun construct-emb-body-string (code &optional (start 0))
   "Takes a string containing an emb code and returns a string
 containing the lisp code that implements that emb code."
-  (multiple-value-bind (start-tag start-code tag-type)
+  (multiple-value-bind (start-tag start-code tag-type trim-start-whitespaces)
       (next-code code start)
     (if (not start-tag)
-      (format nil "(write-string ~S)" (subseq code start))
-      (let ((end-code (search *emb-end-marker* code :start2 start-code)))
-	(if (not end-code)
-	  (error "EOF reached in EMB inside open '~A' tag." *emb-start-marker*)
-	  (format nil "(write-string ~S) ~A ~A"
-		  (subseq code start start-tag)
-		  (format nil (tag-template tag-type)
-			  (subseq code start-code end-code))
-		  (construct-emb-body-string
-                   code
-                   (+ end-code (length *emb-end-marker*)))))))))
+        (format nil "(write-string ~S)" (subseq code start))
+        (let* ((end-code (search *emb-end-marker* code :start2 start-code))
+               (trim-end-whitespaces (char= (char code (1- end-code)) #\-)))
+          (if (not end-code)
+              (error "EOF reached in EMB inside open '~A' tag." *emb-start-marker*)
+              (format nil "(write-string ~S) ~A ~A"
+                      (if trim-start-whitespaces
+                          (string-right-trim '(#\Space #\Tab #\Newline) (subseq code start start-tag))
+                          (subseq code start start-tag))
+                      (format nil (tag-template tag-type)
+                              (subseq code start-code (if trim-end-whitespaces
+                                                          (1- end-code)
+                                                          end-code)))
+                      (construct-emb-body-string
+                       code
+                       (if trim-end-whitespaces
+                           (or (cl-ppcre:scan "\\S" code :start (+ end-code (length *emb-end-marker*)))
+                               (length code))
+                           (+ end-code (length *emb-end-marker*))))))))))
 
 
 ;; Finds the next scriptlet or expression tag in EMB source.  Returns
@@ -449,19 +447,17 @@ containing the lisp code that implements that emb code."
 ;;  1. The position of the first character of the start tag.
 ;;  2. The position of the contents of the tag.
 ;;  3. The type of tag (:scriptlet or :expression).
+;;  4. Whether trim whitespaces before the start tag.
 (defun next-code (string start)
   (let ((start-tag (search *emb-start-marker* string :start2 start)))
     (if (not start-tag)
-      nil
-      (if (and (> (length string) (+ start-tag (length *emb-start-marker*)))
-	       (eql (char string (+ start-tag (length *emb-start-marker*)))
-                    #\=))
-	(values start-tag
-                (+ start-tag 1 (length *emb-start-marker*))
-                :expression)
-	(values start-tag
-                (+ start-tag (length *emb-start-marker*))
-                :scriptlet)))))
+        nil
+        (let ((start-code (+ start-tag (length *emb-start-marker*))))
+          (case (and (> (length string) start-code)
+                     (char string start-code))
+            (#\= (values start-tag (1+ start-code) :expression nil))
+            (#\- (values start-tag (1+ start-code) :scriptlet t))
+            (otherwise (values start-tag start-code :scriptlet nil)))))))
 
 
 ;; Given a tag type (:scriptlet or :expression), returns a format
