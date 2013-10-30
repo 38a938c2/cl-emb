@@ -371,7 +371,7 @@ Replacement and regex in *TEMPLATE-TAG-EXPAND*"
                              string
                              (lambda (match start-tag string end-tag)
                                (declare (ignore match))
-                               (if (ppcre:scan "^#.+#$" string)
+                               (if (ppcre:scan "(?is)^#.+#$" string)
                                    ""
                                    (concatenate 'string
                                                 start-tag

@@ -337,6 +337,7 @@ Uses code from John Wiseman. See http://lemonodor.com/archives/000128.html
 and lsp-LICENSE.txt
 Thanks to Edi Weitz for letting me use his code for ESCAPE-FOR-XML.
 
+Thanks to Eitarow Fukamachi for the whitespace-trimming patch.
 
 AUTHOR
 ======
