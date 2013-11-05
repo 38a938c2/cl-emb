@@ -150,7 +150,8 @@ indicates an expression.")
 
 
 (defparameter *set-special-list*
-  '(("escape" . "cl-emb:*escape-type*")))
+  '(("escape" . "cl-emb:*escape-type*")
+    ("case-sensitivity" . "cl-emb:*case-sensitivity*")))
 
 (defparameter *set-parameter-list*
   '(("xml" . ":xml")
@@ -160,7 +161,8 @@ indicates an expression.")
     ("url-encode" . ":url-encode")
     ("raw" . ":raw")
     ("latex" . ":latex")
-    ))
+    ("t" . "t")
+    ("nil" . "nil")))
 
 ;; TODO: Refactor! Looks a bit clumsy.
 (defun set-specials (match &rest registers)
@@ -293,9 +295,23 @@ Functions get called with two parameters: match and list of registers.")
                     do (format out "%~2,'0x" (char-code char))))))
 
 
+(defvar *case-sensitivity* t
+  "Whether use case-sensitive mode (the default) or case-insensitive mode. If this is set NIL, the case of keys in ENV will be ignored.")
+
 (defun string-to-keyword (string)
   "Interns a given STRING uppercased in the keyword package."
-  (nth-value 0 (intern (string-upcase string) :keyword)))
+  (nth-value 0 (intern
+                (if *case-sensitivity*
+                    (symbol-name (read-from-string string))
+                    (string-upcase (read-from-string string))) :keyword)))
+
+(defun getf* (plist key &optional default)
+  (if *case-sensitivity*
+      (getf plist key default)
+      (loop for (k v) on plist by #'cddr
+            when (string-equal k key)
+              do (return v)
+            finally (return default))))
 
 (defmacro getf-emb (key)
   "Search either plist TOPENV or ENV according to the search path in KEY. KEY
@@ -310,10 +326,9 @@ is a string."
                    (dig-plist
                     (if (zerop (length (first keys)))
                         plist
-                        `(getf ,plist ,(string-to-keyword (first keys))))
+                        `(getf* ,plist ,(string-to-keyword (first keys))))
                     (rest keys)))))
       (dig-plist plist path-parts))))
-
 
 (defvar *escape-type* :raw
   "Default value for escaping @var output.")

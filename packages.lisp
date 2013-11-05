@@ -24,5 +24,6 @@
            #:*emb-start-marker*
            #:*emb-end-marker*
            #:*escape-type*
+           #:*case-sensitivity*
            #:*locking-function*
            #:*function-package*))
