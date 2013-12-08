@@ -271,9 +271,11 @@ Functions get called with two parameters: match and list of registers.")
     (,(string #\Return) . "~\\\\")
     (,(string #\NewLine) . "~\\\\")
     ("\"" . "{''}")
-    ("­" . "")
-    (" " . "")
-    ("‑" . "-")
+    (,(string (code-char 173)) . "\\-")   ; Soft hyphen
+    (,(string (code-char 160)) . "~")     ; No-break space
+    (,(string (code-char 8209)) . "-")    ; Non-breaking hyphen
+    (,(string (code-char 8211)) . "--")   ; En-dash
+    (,(string (code-char 8212)) . "---")  ; Em-dash
     )))
 
 (defun escape-for-latex (string)
