@@ -427,6 +427,11 @@ Replacement and regex in *TEMPLATE-TAG-EXPAND*"
           (subseq seq 0 pos)
           seq))))
 
+(defun string-right-trim-spaces-until-newline (string)
+  (remove #\Newline (string-right-trim '(#\Space #\Tab) string)
+          :from-end t
+          :count 1))
+
 ;; (i) Converts text outside <% ... %> tags into calls
 ;; to WRITE-STRING, (ii) Text inside <% ... %>
 ;; ("scriptlets") is straight lisp code, (iii) Text inside <%= ... %>
@@ -446,7 +451,7 @@ containing the lisp code that implements that emb code."
               (error "EOF reached in EMB inside open '~A' tag." *emb-start-marker*)
               (format nil "(write-string ~S) ~A ~A"
                       (if trim-start-whitespaces
-                          (string-right-trim '(#\Space #\Tab #\Newline) (subseq code start start-tag))
+                          (string-right-trim-spaces-until-newline (subseq code start start-tag))
                           (subseq code start start-tag))
                       (format nil (tag-template tag-type)
                               (subseq code start-code (if trim-end-whitespaces
@@ -455,8 +460,12 @@ containing the lisp code that implements that emb code."
                       (construct-emb-body-string
                        code
                        (if trim-end-whitespaces
-                           (or (cl-ppcre:scan "\\S" code :start (+ end-code (length *emb-end-marker*)))
-                               (length code))
+                           (let ((next-pos (cl-ppcre:scan "(?:\\S|\\n)" code :start (+ end-code (length *emb-end-marker*)))))
+                             (cond
+                               ((null next-pos) (length code))
+                               ((char= (elt code next-pos) #\Newline)
+                                (1+ next-pos))
+                               (t next-pos)))
                            (+ end-code (length *emb-end-marker*))))))))))
 
 
