@@ -219,6 +219,7 @@ like e. g. *ESCAPE-TYPE*."
                                             (cl-emb:execute-emb \"\\1\" :env env :generator-maker generator-maker)) ")
     ("\\s+@insert\\s+(\\S+)\\s*"  . "= (cl-emb::contents-of-file (merge-pathnames (cl-emb::getf-emb \"\\1\") template-path-default)) ")
     ("\\s+@set\\s+(.*?)\\s*"      . ,(function set-specials))
+    ("#.*"                        . "")
     )
   "List of conses. FIRST is regex, REST replacement (STRING or FUNCTION).
 Functions get called with two parameters: match and list of registers.")
