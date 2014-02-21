@@ -338,6 +338,7 @@ and lsp-LICENSE.txt
 Thanks to Edi Weitz for letting me use his code for ESCAPE-FOR-XML.
 
 Thanks to Eitarow Fukamachi for the whitespace-trimming patch.
+Thanks to Christoph Finkensiep for making getf* a generic function.
 
 AUTHOR
 ======

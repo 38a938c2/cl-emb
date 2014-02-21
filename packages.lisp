@@ -26,4 +26,5 @@
            #:*escape-type*
            #:*case-sensitivity*
            #:*locking-function*
-           #:*function-package*))
+           #:*function-package*
+	   #:getf*))

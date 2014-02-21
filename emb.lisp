@@ -277,6 +277,7 @@ Functions get called with two parameters: match and list of registers.")
     (,(string (code-char 8209)) . "-")    ; Non-breaking hyphen
     (,(string (code-char 8211)) . "--")   ; En-dash
     (,(string (code-char 8212)) . "---")  ; Em-dash
+    (,(string (code-char 8470)) . "{\\textnumero}") ; Number sign
     )))
 
 (defun escape-for-latex (string)
@@ -308,13 +309,30 @@ Functions get called with two parameters: match and list of registers.")
                     (symbol-name (read-from-string string))
                     (string-upcase (read-from-string string))) :keyword)))
 
-(defun getf* (plist key &optional default)
+(defgeneric getf* (thing key &optional default)
+  (:documentation "Returns a value by a key"))
+
+(defmethod getf* ((plist list) key &optional default)
+  "Uses getf to get a value from a plist"
   (if *case-sensitivity*
       (getf plist key default)
       (loop for (k v) on plist by #'cddr
             when (string-equal k key)
               do (return v)
             finally (return default))))
+
+(defmethod getf* ((table hash-table) key &optional default)
+  "Uses gethash to get a value from a hash-table"
+  (gethash key table default))
+
+(defmethod getf* ((object standard-object) key &optional default)
+  "Uses slot-value to get a value from a standard object, where the slot name is derived from key"
+  (let ((slot-name (intern (princ-to-string key)
+                           (symbol-package (class-name (class-of object))))))
+    (if (and (slot-exists-p object slot-name)
+             (slot-boundp object slot-name))
+        (slot-value object slot-name)
+        default)))
 
 (defmacro getf-emb (key)
   "Search either plist TOPENV or ENV according to the search path in KEY. KEY
