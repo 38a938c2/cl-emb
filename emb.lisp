@@ -306,8 +306,8 @@ Functions get called with two parameters: match and list of registers.")
   "Interns a given STRING uppercased in the keyword package."
   (nth-value 0 (intern
                 (if *case-sensitivity*
-                    (symbol-name (read-from-string string))
-                    (string-upcase (read-from-string string))) :keyword)))
+                    string
+                    (string-upcase string)) :keyword)))
 
 (defgeneric getf* (thing key &optional default)
   (:documentation "Returns a value by a key"))
