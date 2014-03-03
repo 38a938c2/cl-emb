@@ -299,7 +299,7 @@ Functions get called with two parameters: match and list of registers.")
                     do (format out "%~2,'0x" (char-code char))))))
 
 
-(defvar *case-sensitivity* t
+(defvar *case-sensitivity* nil
   "Whether use case-sensitive mode (the default) or case-insensitive mode. If this is set NIL, the case of keys in ENV will be ignored.")
 
 (defun string-to-keyword (string)
