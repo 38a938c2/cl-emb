@@ -271,7 +271,7 @@ Functions get called with two parameters: match and list of registers.")
     ("^" . "{\\,$\\hat{}$\\,}")
     (,(string #\Return) . "~\\\\")
     (,(string #\NewLine) . "~\\\\")
-    ("\"" . "{''}")
+    ("\"" . "{'{}'}")
     (,(string (code-char 173)) . "\\-")   ; Soft hyphen
     (,(string (code-char 160)) . "~")     ; No-break space
     (,(string (code-char 8209)) . "-")    ; Non-breaking hyphen

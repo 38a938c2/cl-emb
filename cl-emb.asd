@@ -20,6 +20,7 @@
     :version "0.4.3"
     :author "Stefan Scholl <stesch@no-spoon.de>"
     :licence "Lesser Lisp General Public License"
+    :description "A templating system for Common Lisp"
     :depends-on (#:cl-ppcre)
     :components ((:file "packages")
                  (:file "emb" :depends-on ("packages"))))
