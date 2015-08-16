@@ -187,7 +187,7 @@ like e. g. *ESCAPE-TYPE*."
 
 (defparameter *template-tag-expand*
   `(("\\s+@if\\s+(\\S+)\\s*"      . " (cond ((cl-emb::getf-emb \"\\1\") ")
-    ("\\s+@ifnotempty\\s+(\\S+)\\s*"      . " (cond ((> (length (cl-emb::getf-emb \"\\1\")) 0) ")
+    ("\\s+@ifnotempty\\s+(\\S+)\\s*"      . " (cond ((let* ((value (cl-emb::getf-emb \"\\1\"))) (or (numberp value) (> (length value) 0))) ")
     ("\\s+@ifequal\\s+(\\S+)\\s+(\\S+)\\s*"      . "  (cond ((equal (format nil \"~a\" (cl-emb::getf-emb \"\\1\")) (format nil \"~a\" (cl-emb::getf-emb \"\\2\"))) ")
     ("\\s+@else\\s*"              . " ) (t ")
     ("\\s+@endif\\s*"             . " )) ")
