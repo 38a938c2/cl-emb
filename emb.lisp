@@ -186,20 +186,20 @@ like e. g. *ESCAPE-TYPE*."
         "")))
 
 (defparameter *template-tag-expand*
-  `(("\\s+@if\\s+(\\S+)\\s*"      . " (cond ((cl-emb::getf-emb \"\\1\") ")
-    ("\\s+@ifnotempty\\s+(\\S+)\\s*"      . " (cond ((let* ((value (cl-emb::getf-emb \"\\1\"))) (or (numberp value) (> (length value) 0))) ")
-    ("\\s+@ifequal\\s+(\\S+)\\s+(\\S+)\\s*"      . "  (cond ((equal (format nil \"~a\" (cl-emb::getf-emb \"\\1\")) (format nil \"~a\" (cl-emb::getf-emb \"\\2\"))) ")
+  `(("\\s+@if\\s+(\\S+)\\s*"      . " (cond ((cl-emb::autofuncall (cl-emb::getf-emb \"\\1\")) ")
+    ("\\s+@ifnotempty\\s+(\\S+)\\s*"      . " (cond ((let* ((value (cl-emb::autofuncall (cl-emb::getf-emb \"\\1\")))) (or (numberp value) (> (length value) 0))) ")
+    ("\\s+@ifequal\\s+(\\S+)\\s+(\\S+)\\s*"      . "  (cond ((equal (format nil \"~a\" (cl-emb::autofuncall (cl-emb::getf-emb \"\\1\"))) (format nil \"~a\" (cl-emb::autofuncall (cl-emb::getf-emb \"\\2\")))) ")
     ("\\s+@else\\s*"              . " ) (t ")
     ("\\s+@endif\\s*"             . " )) ")
-    ("\\s+@unless\\s+(\\S+)\\s*"  . " (cond ((not (cl-emb::getf-emb \"\\1\")) ")
+    ("\\s+@unless\\s+(\\S+)\\s*"  . " (cond ((not (cl-emb::autofuncall (cl-emb::getf-emb \"\\1\"))) ")
     ("\\s+@endunless\\s*"         . " )) ")
     ("=?\\s+@var\\s+(\\S+)\\s+-(\\S+)\\s+(\\S+)\\s*"
      . "= (cl-emb::echo (cl-emb::getf-emb \"\\1\") :\\2 :\\3) ")
     ("=?\\s+@var\\s+(\\S+)\\s*"   . "= (cl-emb::echo (cl-emb::getf-emb \"\\1\")) ")
     ("\\s+@repeat\\s+(\\d+)\\s*"  . " (dotimes (i \\1) ")
-    ("\\s+@repeat\\s+(\\S+)\\s*"  . " (dotimes (i (or (cl-emb::getf-emb \"\\1\") 0)) ")
+    ("\\s+@repeat\\s+(\\S+)\\s*"  . " (dotimes (i (or (cl-emb::autofuncall (cl-emb::getf-emb \"\\1\")) 0)) ")
     ("\\s+@endrepeat\\s*"         . " ) ")
-    ("\\s+@loop\\s+(\\S+)\\s*"    . " (dolist (env (cl-emb::getf-emb \"\\1\")) ")
+    ("\\s+@loop\\s+(\\S+)\\s*"    . " (dolist (env (cl-emb::autofuncall (cl-emb::getf-emb \"\\1\"))) ")
     ("\\s+@endloop\\s*"           . " ) ")
     ("\\s+@genloop\\s+(\\S+)\\s*" . " (let ((env) 
                                             (%gen (funcall generator-maker :\\1 
@@ -209,17 +209,17 @@ like e. g. *ESCAPE-TYPE*."
                                             (setq env (funcall %gen :next))
                                             (progn ")
     ("\\s+@endgenloop\\s*"        . " ))) ")
-    ("\\s+@with\\s+(\\S+)\\s*"    . " (let ((env (cl-emb::getf-emb \"\\1\"))) ")
+    ("\\s+@with\\s+(\\S+)\\s*"    . " (let ((env (cl-emb::autofuncall (cl-emb::getf-emb \"\\1\")))) ")
     ("\\s+@endwith\\s*"           . " ) ")
     ("\\s+@include\\s+(\\S+)\\s*" . "= (let ((cl-emb:*escape-type* cl-emb:*escape-type*))
                                             (cl-emb:execute-emb (merge-pathnames \"\\1\" template-path-default) :env env :generator-maker generator-maker)) ")
     ("\\s+@includevar\\s+(\\S+)\\s*" . "= (let* ((cl-emb:*escape-type* cl-emb:*escape-type*) 
-                                                  (parameter (cl-emb::getf-emb \"\\1\")))
+                                                  (parameter (cl-emb::autofuncall (cl-emb::getf-emb \"\\1\"))))
                                                 (unless parameter (error \"use of @includevar on undefined parameter ~s\" \"\\1\"))
 						(cl-emb:execute-emb (merge-pathnames parameter template-path-default) :env env :generator-maker generator-maker)) ")
     ("\\s+@call\\s+(\\S+)\\s*"    . "= (let ((cl-emb:*escape-type* cl-emb:*escape-type*))
                                             (cl-emb:execute-emb \"\\1\" :env env :generator-maker generator-maker)) ")
-    ("\\s+@insert\\s+(\\S+)\\s*"  . "= (cl-emb::contents-of-file (merge-pathnames (cl-emb::getf-emb \"\\1\") template-path-default)) ")
+    ("\\s+@insert\\s+(\\S+)\\s*"  . "= (cl-emb::contents-of-file (merge-pathnames (cl-emb::autofuncall (cl-emb::getf-emb \"\\1\")) template-path-default)) ")
     ("\\s+@set\\s+(.*?)\\s*"      . ,(function set-specials))
     ("#.*"                        . "")
     )
@@ -356,6 +356,11 @@ is a string."
 (defvar *escape-type* :raw
   "Default value for escaping @var output.")
 
+(defun autofuncall (v)
+  (if (functionp v)
+    (autofuncall (funcall v))
+    v))
+
 (defun echo (string &key (escape *escape-type*))
   "Emit given STRING. Escape if wanted (global or via ESCAPE keyword).
 STRING can be NIL."
@@ -363,7 +368,7 @@ STRING can be NIL."
               ((stringp string) string)
               ((null string) "")
               ((functionp string) 
-               (format nil "~a" (or (funcall string) "")))
+               (format nil "~a" (or (autofuncall string) "")))
               (t (format nil "~a" string))
               )))
     (case escape 
