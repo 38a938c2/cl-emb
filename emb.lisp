@@ -42,7 +42,7 @@ a function designator which must be called with the lock hold.")
   (:documentation "Execute named emb code. Returns a string. Keyword parameter ENV
 to pass objects to the code. ENV must be a plist."))
 
-(defmethod execute-emb ((name string) &key env generator-maker)
+(defmethod execute-emb ((name t) &key env generator-maker)
   (funcall (get-emb-function name) :env env :generator-maker generator-maker :name name))
 
 (defmethod execute-emb ((name pathname) &key env generator-maker)
@@ -426,7 +426,7 @@ Replacement and regex in *TEMPLATE-TAG-EXPAND*"
 (defvar *emb-stream-redirection* "with-output-to-string (*standard-output*)")
 
 (defun construct-emb-function (code)
-  "Builds and compiles the emb-function."
+  "Builds and compiles the emb-function out of template code."
   (let ((form 
          `,(let ((*package* *function-package*))
                 (read-from-string

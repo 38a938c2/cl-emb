@@ -27,4 +27,5 @@
            #:*case-sensitivity*
            #:*locking-function*
            #:*function-package*
-	   #:getf*))
+	   #:getf*
+           #:construct-emb-function ))
